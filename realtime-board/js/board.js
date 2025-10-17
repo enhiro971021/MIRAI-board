@@ -4,92 +4,151 @@ document.addEventListener('DOMContentLoaded', function() {
   const postsGrid = document.getElementById('postsGrid');
   let isInitialLoad = true;
 
-  // 投稿カードを作成
+  function shouldDisplayPost(post) {
+    return post.isPublished !== false;
+  }
+
+  function removeNoPostsMessage() {
+    const noPostsMsg = postsGrid.querySelector('.no-posts');
+    if (noPostsMsg) {
+      noPostsMsg.remove();
+    }
+  }
+
+  function ensureNoPostsMessage() {
+    if (postsGrid.querySelector('.board-post-card')) {
+      return;
+    }
+    postsGrid.innerHTML = '<div class="no-posts">まだ投稿がありません</div>';
+  }
+
+  function updatePostCard(card, post) {
+    const bg = card.querySelector('.board-post-bg');
+    const text = card.querySelector('.board-post-text');
+    const name = card.querySelector('.board-post-name');
+
+    if (bg) {
+      bg.src = `images/question${post.questionId}-bg.png`;
+      bg.alt = `質問${post.questionId}`;
+    }
+
+    if (text) {
+      text.textContent = post.content;
+    }
+
+    if (name) {
+      if (post.name) {
+        name.textContent = post.name;
+        name.style.display = 'block';
+      } else {
+        name.textContent = '';
+        name.style.display = 'none';
+      }
+    }
+  }
+
   function createPostCard(post) {
     const card = document.createElement('div');
     card.className = 'board-post-card';
     card.dataset.postId = post.id;
 
     const bg = document.createElement('img');
-    bg.src = `images/question${post.questionId}-bg.png`;
-    bg.alt = `質問${post.questionId}`;
     bg.className = 'board-post-bg';
+    card.appendChild(bg);
 
     const content = document.createElement('div');
     content.className = 'board-post-content';
 
     const text = document.createElement('div');
     text.className = 'board-post-text';
-    text.textContent = post.content;
 
     const name = document.createElement('div');
     name.className = 'board-post-name';
-    name.textContent = post.name;
 
     content.appendChild(text);
     content.appendChild(name);
-    card.appendChild(bg);
     card.appendChild(content);
+
+    updatePostCard(card, post);
 
     return card;
   }
 
-  // 投稿を表示
-  function displayPost(post, isNew = false) {
-    // 「投稿を読み込んでいます...」を削除
-    const noPostsMsg = postsGrid.querySelector('.no-posts');
-    if (noPostsMsg) {
-      noPostsMsg.remove();
-    }
-
-    // 既に表示されているか確認
-    const existingCard = postsGrid.querySelector(`[data-post-id="${post.id}"]`);
+  function removePostCard(postId) {
+    const existingCard = postsGrid.querySelector(`[data-post-id="${postId}"]`);
     if (existingCard) {
-      return;
-    }
-
-    const card = createPostCard(post);
-
-    // 新しい投稿は先頭に追加
-    if (isNew && !isInitialLoad) {
-      postsGrid.insertBefore(card, postsGrid.firstChild);
-    } else {
-      postsGrid.appendChild(card);
+      existingCard.remove();
+      ensureNoPostsMessage();
     }
   }
 
-  // Firestoreからデータを取得してリアルタイム監視
+  function renderPost(post) {
+    if (!shouldDisplayPost(post)) {
+      removePostCard(post.id);
+      return;
+    }
+
+    removeNoPostsMessage();
+
+    let card = postsGrid.querySelector(`[data-post-id="${post.id}"]`);
+
+    if (!card) {
+      card = createPostCard(post);
+
+      if (!isInitialLoad) {
+        postsGrid.insertBefore(card, postsGrid.firstChild || null);
+      } else {
+        postsGrid.appendChild(card);
+      }
+      return;
+    }
+
+    updatePostCard(card, post);
+  }
+
   db.collection('posts')
     .orderBy('timestamp', 'desc')
     .onSnapshot((snapshot) => {
       if (isInitialLoad) {
-        // 初回読み込み：全件表示
         postsGrid.innerHTML = '';
-        
-        if (snapshot.empty) {
-          postsGrid.innerHTML = '<div class="no-posts">まだ投稿がありません</div>';
-        } else {
-          snapshot.forEach((doc) => {
-            const post = {
-              id: doc.id,
-              ...doc.data()
-            };
-            displayPost(post, false);
-          });
-        }
-        
-        isInitialLoad = false;
-      } else {
-        // リアルタイム更新：新しい投稿のみ追加
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const post = {
-              id: change.doc.id,
-              ...change.doc.data()
-            };
-            displayPost(post, true);
+
+        let hasPublished = false;
+
+        snapshot.forEach((doc) => {
+          const post = {
+            id: doc.id,
+            ...doc.data()
+          };
+
+          if (shouldDisplayPost(post)) {
+            renderPost(post);
+            hasPublished = true;
           }
         });
+
+        if (!hasPublished) {
+          ensureNoPostsMessage();
+        }
+
+        isInitialLoad = false;
+        return;
+      }
+
+      snapshot.docChanges().forEach((change) => {
+        const post = {
+          id: change.doc.id,
+          ...change.doc.data()
+        };
+
+        if (change.type === 'added' || change.type === 'modified') {
+          renderPost(post);
+        } else if (change.type === 'removed') {
+          removePostCard(post.id);
+        }
+      });
+
+      if (!postsGrid.querySelector('.board-post-card')) {
+        ensureNoPostsMessage();
       }
     }, (error) => {
       console.error('データ取得エラー:', error);

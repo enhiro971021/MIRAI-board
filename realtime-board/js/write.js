@@ -56,7 +56,10 @@ document.addEventListener('DOMContentLoaded', function() {
       submissionId: submissionId
     });
 
-    sessionStorage.setItem(`submissionStatus:${submissionId}`, 'pending');
+    sessionStorage.setItem(
+      `submissionStatus:${submissionId}`,
+      JSON.stringify({ status: 'pending' })
+    );
 
     window.location.href = `complete.html?${params.toString()}`;
   });

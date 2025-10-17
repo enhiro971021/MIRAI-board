@@ -15,14 +15,72 @@ document.addEventListener('DOMContentLoaded', async function() {
   const completeMessage = document.getElementById('completeMessage');
 
   const SLIDE_DURATION = 2000;
-  const REDIRECT_DELAY = 10000;
+  const REDIRECT_DELAY = 12000;
+
+  function getSessionState() {
+    if (!submissionKey) {
+      return null;
+    }
+
+    const raw = sessionStorage.getItem(submissionKey);
+
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (error) {
+      return { status: raw };
+    }
+
+    return null;
+  }
+
+  function updateSessionState(status, docId) {
+    if (!submissionKey) {
+      return;
+    }
+
+    const nextState = { status };
+
+    if (docId) {
+      nextState.docId = docId;
+    }
+
+    sessionStorage.setItem(submissionKey, JSON.stringify(nextState));
+  }
 
   function showError(message) {
+    postCard.style.display = 'none';
+    postCard.dataset.animating = 'true';
     completeMessage.textContent = message;
     completeMessage.classList.add('show');
   }
 
-  function startCompletionAnimation() {
+  async function publishPost(docId) {
+    if (typeof db === 'undefined' || !db) {
+      updateSessionState('saved', docId);
+      completeMessage.textContent = '送信は完了しましたが、掲示板への反映に失敗しました。時間をおいて再度ご確認ください。';
+      return;
+    }
+
+    try {
+      await db.collection('posts').doc(docId).update({
+        isPublished: true
+      });
+      updateSessionState('published', docId);
+    } catch (error) {
+      console.error('公開エラー:', error);
+      updateSessionState('saved', docId);
+      completeMessage.textContent = '送信は完了しましたが、掲示板への反映に失敗しました。時間をおいて再度ご確認ください。';
+    }
+  }
+
+  function startCompletionAnimation(docId, shouldPublish) {
     if (postCard.dataset.animating === 'true') {
       return;
     }
@@ -34,9 +92,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       postCard.classList.add('slide-out');
     });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       postCard.style.display = 'none';
       completeMessage.classList.add('show');
+
+      if (shouldPublish && docId) {
+        await publishPost(docId);
+      }
     }, SLIDE_DURATION);
 
     setTimeout(() => {
@@ -45,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   if (!content || Number.isNaN(questionId)) {
-    postCard.style.display = 'none';
+    updateSessionState('failed');
     showError('投稿データが見つかりません。ブラウザの戻るボタンで入力画面へお戻りください。');
     return;
   }
@@ -61,35 +123,49 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   if (!submissionKey) {
-    startCompletionAnimation();
+    startCompletionAnimation(null, false);
     return;
   }
 
-  const status = sessionStorage.getItem(submissionKey);
+  const sessionState = getSessionState();
+  const sessionStatus = sessionState?.status || null;
+  const sessionDocId = sessionState?.docId || null;
 
-  if (status === 'submitted') {
-    startCompletionAnimation();
+  if (sessionStatus === 'published') {
+    startCompletionAnimation(sessionDocId, false);
+    return;
+  }
+
+  if (sessionStatus === 'saved' || sessionStatus === 'submitted') {
+    startCompletionAnimation(sessionDocId, true);
+    return;
+  }
+
+  if (sessionStatus === 'failed') {
+    showError('送信に失敗しました。ブラウザの戻るボタンで再度お試しください。');
     return;
   }
 
   if (typeof db === 'undefined' || !db) {
+    updateSessionState('failed');
     showError('送信に失敗しました。ブラウザの戻るボタンで再度お試しください。');
     return;
   }
 
   try {
-    await db.collection('posts').add({
+    const docRef = await db.collection('posts').add({
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       questionId: questionId,
       content: content,
-      name: name
+      name: name,
+      isPublished: false
     });
 
-    sessionStorage.setItem(submissionKey, 'submitted');
-    startCompletionAnimation();
+    updateSessionState('saved', docRef.id);
+    startCompletionAnimation(docRef.id, true);
   } catch (error) {
     console.error('送信エラー:', error);
-    sessionStorage.setItem(submissionKey, 'failed');
+    updateSessionState('failed');
     showError('送信に失敗しました。ブラウザの戻るボタンで再度お試しください。');
   }
 });
