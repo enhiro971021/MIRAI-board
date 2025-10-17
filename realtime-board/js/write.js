@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
   contentInput.addEventListener('input', validateContent);
 
   // 送信ボタンのクリックイベント
-  submitBtn.addEventListener('click', async function() {
+  submitBtn.addEventListener('click', function() {
     if (!validateContent()) {
       return;
     }
@@ -45,28 +45,19 @@ document.addEventListener('DOMContentLoaded', function() {
     submitBtn.disabled = true;
     submitBtn.textContent = '送信中...';
 
-    try {
-      // Firestoreに保存
-      await db.collection('posts').add({
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        questionId: questionId,
-        content: content,
-        name: name
-      });
+    const submissionId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `submission-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-      // 送信完了ページに遷移
-      const params = new URLSearchParams({
-        questionId: questionId,
-        content: content,
-        name: name
-      });
-      window.location.href = `complete.html?${params.toString()}`;
+    const params = new URLSearchParams({
+      questionId: questionId,
+      content: content,
+      name: name,
+      submissionId: submissionId
+    });
 
-    } catch (error) {
-      console.error('送信エラー:', error);
-      alert('送信に失敗しました。もう一度お試しください。');
-      submitBtn.disabled = false;
-      submitBtn.textContent = '送信';
-    }
+    sessionStorage.setItem(`submissionStatus:${submissionId}`, 'pending');
+
+    window.location.href = `complete.html?${params.toString()}`;
   });
 });
