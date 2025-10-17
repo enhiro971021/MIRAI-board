@@ -21,15 +21,23 @@ document.addEventListener('DOMContentLoaded', function() {
   cardText.textContent = content;
   cardName.textContent = name;
 
-  // アニメーション開始
+  const SLIDE_DELAY = 2000;
+  const SLIDE_DURATION = 2000;
+
+  // アニメーション開始（2秒待機後にスライドアウト）
   setTimeout(() => {
     postCard.classList.add('slide-out');
-  }, 100);
 
-  // 2秒後に完了メッセージを表示
+    // スライドアウト完了後にカードを非表示化してメッセージを中央に配置
+    setTimeout(() => {
+      postCard.style.display = 'none';
+    }, SLIDE_DURATION);
+  }, SLIDE_DELAY);
+
+  // 完了メッセージをスライドアウト完了後に表示
   setTimeout(() => {
     completeMessage.classList.add('show');
-  }, 2000);
+  }, SLIDE_DELAY + SLIDE_DURATION);
 
   // 12秒後に掲示板ページに遷移
   setTimeout(() => {
