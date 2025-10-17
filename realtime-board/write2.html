@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>質問2 - 書き込み</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="write-container">
+    <img src="images/question2-header.png" alt="質問2" class="header-image">
+    
+    <div class="form-container">
+      <div class="input-group">
+        <textarea 
+          id="content" 
+          class="textarea-input" 
+          placeholder="160文字以内"
+          maxlength="160"
+        ></textarea>
+        <div id="errorMessage" class="error-message">※160文字以内にしてください</div>
+      </div>
+      
+      <div class="input-group">
+        <input 
+          type="text" 
+          id="name" 
+          class="text-input" 
+          placeholder="名前(任意)"
+        >
+      </div>
+      
+      <button id="submitBtn" class="button button-primary" disabled>送信</button>
+      
+      <a href="index.html" class="button button-secondary">掲示板をみる</a>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
+  <!-- 設定とスクリプト -->
+  <script src="js/config.js"></script>
+  <script src="js/write.js"></script>
+  <script>
+    // 質問番号を設定
+    window.QUESTION_ID = 2;
+  </script>
+</body>
+</html>

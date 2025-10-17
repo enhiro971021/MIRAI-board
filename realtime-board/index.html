@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>掲示板</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="board-container">
+    <h1 class="board-title">みんなの投稿</h1>
+    
+    <div id="postsGrid" class="posts-grid">
+      <div class="no-posts">投稿を読み込んでいます...</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
+  <!-- 設定とスクリプト -->
+  <script src="js/config.js"></script>
+  <script src="js/board.js"></script>
+</body>
+</html>
